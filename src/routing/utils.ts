@@ -18,13 +18,6 @@ export function generateMockTxHash(_dex: DexType): string {
     txHash += base58Chars[randomIndex];
   }
   
-  // Add a timestamp-based component to ensure uniqueness
-  const timestamp = Date.now().toString(36);
-  
-  // Replace a portion of the hash with timestamp to ensure uniqueness
-  // while maintaining the 88-character length
-  txHash = txHash.slice(0, 88 - timestamp.length) + timestamp;
-  
   return txHash;
 }
 
