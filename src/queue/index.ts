@@ -1,2 +1,3 @@
 // Queue layer - BullMQ order processing
-export {};
+export { OrderQueue, OrderQueueConfig } from './OrderQueue';
+export { OrderProcessor, OrderResult } from './OrderProcessor';
