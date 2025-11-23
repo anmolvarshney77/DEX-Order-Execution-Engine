@@ -1,2 +1,2 @@
 // API layer - Fastify server and WebSocket management
-export {};
+export { WebSocketManager } from './WebSocketManager.js';
