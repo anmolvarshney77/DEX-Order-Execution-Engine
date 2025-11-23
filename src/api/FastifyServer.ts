@@ -59,9 +59,55 @@ export class FastifyServer {
    * Register all API routes
    */
   private registerRoutes(): void {
-    // Health check endpoint
+    // Basic health check endpoint
     this.app.get('/health', async () => {
       return { status: 'ok', timestamp: Date.now() };
+    });
+
+    // Detailed health check endpoint with component status
+    this.app.get('/health/detailed', async () => {
+      try {
+        // Check database connection
+        const dbHealthy = await this.checkDatabaseHealth();
+        
+        // Check Redis connection
+        const redisHealthy = await this.checkRedisHealth();
+        
+        // Get queue metrics
+        const queueMetrics = await this.orderQueue.getMetrics();
+        
+        // Get WebSocket connection count
+        const wsConnections = this.wsManager.getTotalConnectionCount();
+
+        return {
+          status: dbHealthy && redisHealthy ? 'healthy' : 'degraded',
+          timestamp: Date.now(),
+          components: {
+            database: dbHealthy ? 'healthy' : 'unhealthy',
+            redis: redisHealthy ? 'healthy' : 'unhealthy',
+            queue: {
+              status: 'healthy',
+              metrics: queueMetrics
+            },
+            websocket: {
+              status: 'healthy',
+              activeConnections: wsConnections
+            }
+          },
+          config: {
+            dexImplementation: this.config.DEX_IMPLEMENTATION,
+            queueConcurrency: this.config.QUEUE_CONCURRENCY,
+            environment: this.config.NODE_ENV
+          }
+        };
+      } catch (error) {
+        logger.error({ error }, 'Health check failed');
+        return {
+          status: 'unhealthy',
+          timestamp: Date.now(),
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
     });
 
     // Order submission endpoint with WebSocket upgrade
@@ -301,5 +347,32 @@ export class FastifyServer {
    */
   getApp(): FastifyInstance {
     return this.app;
+  }
+
+  /**
+   * Check database health
+   */
+  private async checkDatabaseHealth(): Promise<boolean> {
+    try {
+      await this.orderRepository.findById('health-check-test');
+      return true;
+    } catch (error) {
+      logger.error({ error }, 'Database health check failed');
+      return false;
+    }
+  }
+
+  /**
+   * Check Redis health
+   */
+  private async checkRedisHealth(): Promise<boolean> {
+    try {
+      // Try to get a non-existent key to test Redis connection
+      await this.orderQueue.getMetrics();
+      return true;
+    } catch (error) {
+      logger.error({ error }, 'Redis health check failed');
+      return false;
+    }
   }
 }
